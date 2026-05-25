@@ -98,6 +98,45 @@ export type Database = {
         }
         Relationships: []
       }
+      promotions: {
+        Row: {
+          created_at: string
+          discount_percent: number
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          scope: Database["public"]["Enums"]["promo_scope"]
+          starts_at: string | null
+          target_ids: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discount_percent: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          scope?: Database["public"]["Enums"]["promo_scope"]
+          starts_at?: string | null
+          target_ids?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discount_percent?: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          scope?: Database["public"]["Enums"]["promo_scope"]
+          starts_at?: string | null
+          target_ids?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           created_at: string
@@ -182,6 +221,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      promo_scope: "all" | "packages" | "services" | "specific"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -310,6 +350,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      promo_scope: ["all", "packages", "services", "specific"],
     },
   },
 } as const
