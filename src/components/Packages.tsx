@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import { usePromotions } from "@/hooks/usePromotions";
 
 type Pkg = { id: string; slug: string; name: string; description: string | null; features: string[]; price: number; is_featured: boolean; sort_order: number };
 
 export function Packages() {
   const [packages, setPackages] = useState<Pkg[]>([]);
   const { add, setOpen } = useCart();
+  const { apply } = usePromotions();
   useEffect(() => {
     supabase.from("packages").select("*").order("sort_order").then(({ data }) => {
       if (data) setPackages(data as unknown as Pkg[]);
@@ -26,6 +28,7 @@ export function Packages() {
         <div className="grid md:grid-cols-3 gap-6">
           {packages.map((p) => {
             const featured = p.is_featured;
+            const { original, final, promo } = apply("package", p.id, Number(p.price));
             return (
               <div key={p.id} className={`relative rounded-2xl border bg-card p-8 flex flex-col ${featured ? "ring-2 ring-[color:var(--gold)] shadow-xl md:scale-[1.03]" : ""}`}>
                 {featured && (
@@ -33,10 +36,18 @@ export function Packages() {
                     <Crown className="h-3 w-3" /> Najczęściej wybierany
                   </span>
                 )}
+                {promo && (
+                  <span className="absolute -top-3 right-4 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground shadow">
+                    -{Number(promo.discount_percent)}% {promo.name}
+                  </span>
+                )}
                 <h3 className="font-display text-2xl">{p.name}</h3>
                 {p.description && <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>}
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className="font-display text-5xl font-semibold">{Number(p.price).toFixed(0)}</span>
+                  {promo && (
+                    <span className="font-display text-xl line-through text-muted-foreground mr-2">{original.toFixed(0)}</span>
+                  )}
+                  <span className={`font-display text-5xl font-semibold ${promo ? "text-destructive" : ""}`}>{final.toFixed(0)}</span>
                   <span className="text-muted-foreground">zł</span>
                 </div>
                 <ul className="mt-6 space-y-2 flex-1">
@@ -49,7 +60,7 @@ export function Packages() {
                 </ul>
                 <Button
                   onClick={() => {
-                    add({ id: `pkg-${p.id}`, type: "package", name: p.name, price: Number(p.price) });
+                    add({ id: `pkg-${p.id}`, type: "package", name: promo ? `${p.name} (-${Number(promo.discount_percent)}%)` : p.name, price: final });
                     toast.success(`Dodano ${p.name} do koszyka`);
                     setOpen(true);
                   }}
