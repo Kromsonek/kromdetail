@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import { usePromotions } from "@/hooks/usePromotions";
 
 type Service = { id: string; name: string; description: string | null; price: number };
 
@@ -13,6 +14,7 @@ export function CustomServices() {
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const { add, setOpen } = useCart();
+  const { apply } = usePromotions();
 
   useEffect(() => {
     supabase.from("services").select("*").order("sort_order").then(({ data }) => {
@@ -20,8 +22,9 @@ export function CustomServices() {
     });
   }, []);
 
+  const priceOf = (s: Service) => apply("service", s.id, Number(s.price));
   const selectedList = services.filter((s) => selected[s.id]);
-  const sum = selectedList.reduce((a, b) => a + Number(b.price), 0);
+  const sum = selectedList.reduce((a, b) => a + priceOf(b).final, 0);
   const discount = selectedList.length >= 3 ? sum * 0.1 : 0;
   const total = sum - discount;
 
@@ -30,7 +33,10 @@ export function CustomServices() {
       toast.error(`Minimalna wartość zamówienia to ${MIN_ORDER} zł`);
       return;
     }
-    selectedList.forEach((s) => add({ id: `svc-${s.id}`, type: "service", name: s.name, price: Number(s.price) }));
+    selectedList.forEach((s) => {
+      const { final, promo } = priceOf(s);
+      add({ id: `svc-${s.id}`, type: "service", name: promo ? `${s.name} (-${Number(promo.discount_percent)}%)` : s.name, price: final });
+    });
     toast.success(`Dodano ${selectedList.length} usługi do koszyka`);
     setSelected({});
     setOpen(true);
@@ -47,18 +53,27 @@ export function CustomServices() {
             Minimalna wartość zamówienia to {MIN_ORDER} zł.
           </p>
           <div className="mt-8 grid sm:grid-cols-2 gap-3">
-            {services.map((s) => (
+            {services.map((s) => {
+              const { original, final, promo } = priceOf(s);
+              return (
               <label key={s.id} className={`flex items-start gap-3 p-4 rounded-xl border bg-card cursor-pointer transition-all ${selected[s.id] ? "border-[color:var(--gold)] ring-1 ring-[color:var(--gold)]" : "hover:border-foreground/30"}`}>
                 <Checkbox checked={!!selected[s.id]} onCheckedChange={(v) => setSelected((p) => ({ ...p, [s.id]: !!v }))} className="mt-1" />
                 <div className="flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium">{s.name}</span>
-                    <span className="font-display text-lg">{Number(s.price).toFixed(0)} zł</span>
+                    <span className="font-medium">
+                      {s.name}
+                      {promo && <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground">-{Number(promo.discount_percent)}%</span>}
+                    </span>
+                    <span className="font-display text-lg whitespace-nowrap">
+                      {promo && <span className="text-xs line-through text-muted-foreground mr-1">{original.toFixed(0)}</span>}
+                      <span className={promo ? "text-destructive" : ""}>{final.toFixed(0)} zł</span>
+                    </span>
                   </div>
                   {s.description && <p className="text-xs text-muted-foreground mt-1">{s.description}</p>}
                 </div>
               </label>
-            ))}
+              );
+            })}
           </div>
         </div>
         <aside className="lg:sticky lg:top-24 h-fit rounded-2xl border bg-card p-6">

@@ -1,0 +1,283 @@
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Trash2, LogOut, Tag } from "lucide-react";
+
+export const Route = createFileRoute("/admin")({
+  component: AdminPage,
+  head: () => ({ meta: [{ title: "Admin — KromDetail" }] }),
+});
+
+type Promotion = {
+  id: string;
+  name: string;
+  discount_percent: number;
+  scope: "all" | "packages" | "services" | "specific";
+  target_ids: string[];
+  is_active: boolean;
+};
+
+type Pkg = { id: string; name: string };
+type Svc = { id: string; name: string };
+
+function AdminPage() {
+  const nav = useNavigate();
+  const [checking, setChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [services, setServices] = useState<Svc[]>([]);
+
+  const [name, setName] = useState("");
+  const [percent, setPercent] = useState<number>(10);
+  const [scope, setScope] = useState<Promotion["scope"]>("all");
+  const [targetIds, setTargetIds] = useState<string[]>([]);
+  const [isActive, setIsActive] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        nav({ to: "/auth" });
+        return;
+      }
+      setUserEmail(data.user.email ?? null);
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      const ok = !!roleData;
+      setIsAdmin(ok);
+      setChecking(false);
+      if (ok) await loadAll();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadAll = async () => {
+    const [pkgs, svcs, promos] = await Promise.all([
+      supabase.from("packages").select("id,name").order("sort_order"),
+      supabase.from("services").select("id,name").order("sort_order"),
+      (supabase.from as any)("promotions").select("*").order("created_at", { ascending: false }),
+    ]);
+    if (pkgs.data) setPackages(pkgs.data as Pkg[]);
+    if (svcs.data) setServices(svcs.data as Svc[]);
+    if (promos.data) setPromotions(promos.data as Promotion[]);
+  };
+
+  const targetOptions: { id: string; label: string }[] =
+    scope === "specific"
+      ? [
+          ...packages.map((p) => ({ id: p.id, label: `Pakiet: ${p.name}` })),
+          ...services.map((s) => ({ id: s.id, label: `Usługa: ${s.name}` })),
+        ]
+      : [];
+
+  const resetForm = () => {
+    setName("");
+    setPercent(10);
+    setScope("all");
+    setTargetIds([]);
+    setIsActive(true);
+  };
+
+  const createPromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("Podaj powód promocji");
+    if (percent <= 0 || percent > 100) return toast.error("Procent musi być w zakresie 1–100");
+    if (scope === "specific" && targetIds.length === 0)
+      return toast.error("Wybierz przynajmniej jeden produkt");
+    setSaving(true);
+    const { error } = await (supabase.from as any)("promotions").insert({
+      name: name.trim(),
+      discount_percent: percent,
+      scope,
+      target_ids: scope === "specific" ? targetIds : [],
+      is_active: isActive,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Promocja dodana");
+    resetForm();
+    loadAll();
+  };
+
+  const toggleActive = async (p: Promotion) => {
+    const { error } = await (supabase.from as any)("promotions")
+      .update({ is_active: !p.is_active })
+      .eq("id", p.id);
+    if (error) return toast.error(error.message);
+    loadAll();
+  };
+
+  const deletePromo = async (id: string) => {
+    if (!confirm("Usunąć tę promocję?")) return;
+    const { error } = await (supabase.from as any)("promotions").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Usunięto");
+    loadAll();
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    nav({ to: "/auth" });
+  };
+
+  if (checking) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Sprawdzanie uprawnień...</div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="font-display text-3xl">Brak dostępu</h1>
+          <p className="mt-2 text-muted-foreground">Konto {userEmail} nie ma roli administratora.</p>
+          <div className="mt-4 flex justify-center gap-2">
+            <Button onClick={logout} variant="outline">Wyloguj</Button>
+            <Link to="/" className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm">Powrót</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const scopeLabel = (s: Promotion["scope"]) =>
+    s === "all" ? "Wszystkie produkty"
+    : s === "packages" ? "Wszystkie pakiety"
+    : s === "services" ? "Wszystkie usługi"
+    : "Wybrane produkty";
+
+  const targetName = (id: string) => {
+    const p = packages.find((x) => x.id === id);
+    if (p) return `Pakiet: ${p.name}`;
+    const s = services.find((x) => x.id === id);
+    if (s) return `Usługa: ${s.name}`;
+    return id;
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to="/" className="font-display text-2xl">KromDetail · Admin</Link>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-muted-foreground hidden sm:inline">{userEmail}</span>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut className="h-4 w-4 mr-1" /> Wyloguj
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-10 max-w-4xl">
+        <div className="flex items-center gap-2 mb-6">
+          <Tag className="h-5 w-5 text-[color:var(--gold)]" />
+          <h2 className="font-display text-3xl">Promocje</h2>
+        </div>
+
+        <form onSubmit={createPromo} className="rounded-2xl border bg-card p-6 mb-8 space-y-4">
+          <h3 className="font-semibold">Dodaj nową promocję</h3>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="promo-name">Powód / nazwa promocji</Label>
+              <Input id="promo-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Wiosenna wyprzedaż" required maxLength={100} />
+            </div>
+            <div>
+              <Label htmlFor="promo-percent">Procent zniżki (%)</Label>
+              <Input id="promo-percent" type="number" min={1} max={100} value={percent}
+                onChange={(e) => setPercent(Number(e.target.value))} required />
+            </div>
+            <div>
+              <Label>Zakres</Label>
+              <Select value={scope} onValueChange={(v) => { setScope(v as Promotion["scope"]); setTargetIds([]); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszystkie produkty</SelectItem>
+                  <SelectItem value="packages">Wszystkie pakiety</SelectItem>
+                  <SelectItem value="services">Wszystkie usługi</SelectItem>
+                  <SelectItem value="specific">Wybrane produkty</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Checkbox id="promo-active" checked={isActive} onCheckedChange={(v) => setIsActive(!!v)} />
+              <Label htmlFor="promo-active" className="cursor-pointer">Promocja aktywna</Label>
+            </div>
+          </div>
+
+          {scope === "specific" && (
+            <div>
+              <Label>Wybierz produkty</Label>
+              <div className="mt-2 grid sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto p-3 rounded-lg border bg-background">
+                {targetOptions.map((opt) => {
+                  const checked = targetIds.includes(opt.id);
+                  return (
+                    <label key={opt.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={checked} onCheckedChange={(v) => {
+                        setTargetIds((prev) => v ? [...prev, opt.id] : prev.filter((x) => x !== opt.id));
+                      }} />
+                      <span>{opt.label}</span>
+                    </label>
+                  );
+                })}
+                {targetOptions.length === 0 && <p className="text-sm text-muted-foreground">Brak produktów</p>}
+              </div>
+            </div>
+          )}
+
+          <Button type="submit" disabled={saving} className="btn-gold h-11">
+            {saving ? "Zapisywanie..." : "Dodaj promocję"}
+          </Button>
+        </form>
+
+        <div className="space-y-3">
+          <h3 className="font-semibold">Aktualne promocje ({promotions.length})</h3>
+          {promotions.length === 0 && (
+            <p className="text-sm text-muted-foreground">Brak promocji. Dodaj pierwszą powyżej.</p>
+          )}
+          {promotions.map((p) => (
+            <div key={p.id} className="rounded-xl border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold">{p.name}</span>
+                  <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded bg-destructive text-destructive-foreground">
+                    -{Number(p.discount_percent)}%
+                  </span>
+                  {!p.is_active && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">Nieaktywna</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {scopeLabel(p.scope)}
+                  {p.scope === "specific" && p.target_ids?.length > 0 && (
+                    <> — {p.target_ids.map(targetName).join(", ")}</>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => toggleActive(p)}>
+                  {p.is_active ? "Wyłącz" : "Włącz"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => deletePromo(p.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
