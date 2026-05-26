@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
-  head: () => ({ meta: [{ title: "Panel — KromDetail" }] }),
+  head: () => ({ meta: [{ title: "Konto — KromDetail" }] }),
 });
 
 function AuthPage() {
@@ -33,7 +33,7 @@ function AuthPage() {
       });
       setLoading(false);
       if (error) { toast.error(error.message); return; }
-      toast.success("Konto utworzone! Możesz się zalogować.");
+      toast.success("Konto utworzone! Sprawdź mail lub zaloguj się.");
       setMode("login");
       return;
     }
@@ -49,16 +49,16 @@ function AuthPage() {
       <form onSubmit={onSubmit} className="w-full max-w-sm rounded-2xl border bg-card p-8 shadow-sm">
         <div className="flex gap-2 mb-6">
           <button type="button" onClick={() => setMode("login")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium ${mode==="login" ? "bg-foreground text-background" : "bg-muted"}`}>
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${mode === "login" ? "bg-foreground text-background" : "bg-muted"}`}>
             Logowanie
           </button>
           <button type="button" onClick={() => setMode("signup")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium ${mode==="signup" ? "bg-foreground text-background" : "bg-muted"}`}>
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${mode === "signup" ? "bg-foreground text-background" : "bg-muted"}`}>
             Rejestracja
           </button>
         </div>
         <h1 className="font-display text-2xl">{mode === "login" ? "Zaloguj się" : "Utwórz konto"}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Konto pozwala zbierać punkty i zapisać profile aut.</p>
+        <p className="text-sm text-muted-foreground mt-1">Zbieraj punkty (1 pkt = 10 zł) i zapisz profile aut.</p>
         <div className="mt-6 space-y-4">
           {mode === "signup" && (
             <div>
@@ -85,15 +85,3 @@ function AuthPage() {
     </div>
   );
 }
-
-function _unused() {
-  return null;
-}
-
-/* legacy
-  const _x = async () => {
-    if (false) {
-      toast.success("");
-    }
-  };
-*/
