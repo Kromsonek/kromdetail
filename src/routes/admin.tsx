@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, LogOut, Tag } from "lucide-react";
+import { Trash2, LogOut, Tag, Award } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -25,6 +25,7 @@ type Promotion = {
 
 type Pkg = { id: string; name: string };
 type Svc = { id: string; name: string };
+type Reward = { id: string; name: string; description: string | null; points_cost: number; image_url: string | null; is_active: boolean };
 
 function AdminPage() {
   const nav = useNavigate();
@@ -35,6 +36,11 @@ function AdminPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [services, setServices] = useState<Svc[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rwName, setRwName] = useState("");
+  const [rwDesc, setRwDesc] = useState("");
+  const [rwCost, setRwCost] = useState<number>(50);
+  const [rwImage, setRwImage] = useState("");
 
   const [name, setName] = useState("");
   const [percent, setPercent] = useState<number>(10);
@@ -66,14 +72,16 @@ function AdminPage() {
   }, []);
 
   const loadAll = async () => {
-    const [pkgs, svcs, promos] = await Promise.all([
+    const [pkgs, svcs, promos, rws] = await Promise.all([
       supabase.from("packages").select("id,name").order("sort_order"),
       supabase.from("services").select("id,name").order("sort_order"),
       (supabase.from as any)("promotions").select("*").order("created_at", { ascending: false }),
+      supabase.from("rewards").select("*").order("points_cost"),
     ]);
     if (pkgs.data) setPackages(pkgs.data as Pkg[]);
     if (svcs.data) setServices(svcs.data as Svc[]);
     if (promos.data) setPromotions(promos.data as Promotion[]);
+    if (rws.data) setRewards(rws.data as Reward[]);
   };
 
   const targetOptions: { id: string; label: string }[] =
@@ -126,6 +134,30 @@ function AdminPage() {
     const { error } = await (supabase.from as any)("promotions").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Usunięto");
+    loadAll();
+  };
+
+  const addReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rwName.trim() || rwCost <= 0) return toast.error("Podaj nazwę i koszt punktów");
+    const { error } = await supabase.from("rewards").insert({
+      name: rwName.trim(), description: rwDesc.trim() || null,
+      points_cost: rwCost, image_url: rwImage.trim() || null,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Nagroda dodana");
+    setRwName(""); setRwDesc(""); setRwCost(50); setRwImage("");
+    loadAll();
+  };
+
+  const toggleReward = async (r: Reward) => {
+    await supabase.from("rewards").update({ is_active: !r.is_active }).eq("id", r.id);
+    loadAll();
+  };
+
+  const deleteReward = async (id: string) => {
+    if (!confirm("Usunąć nagrodę?")) return;
+    await supabase.from("rewards").delete().eq("id", id);
     loadAll();
   };
 
@@ -271,6 +303,49 @@ function AdminPage() {
                   {p.is_active ? "Wyłącz" : "Włącz"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => deletePromo(p.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mt-12 mb-6">
+          <Award className="h-5 w-5 text-[color:var(--gold)]" />
+          <h2 className="font-display text-3xl">Nagrody (karnet lojalnościowy)</h2>
+        </div>
+
+        <form onSubmit={addReward} className="rounded-2xl border bg-card p-6 mb-8 space-y-4">
+          <h3 className="font-semibold">Dodaj nową nagrodę</h3>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div><Label>Nazwa</Label>
+              <Input value={rwName} onChange={(e) => setRwName(e.target.value)} placeholder="np. Mycie zewnętrzne gratis" required /></div>
+            <div><Label>Koszt (pkt)</Label>
+              <Input type="number" min={1} value={rwCost} onChange={(e) => setRwCost(Number(e.target.value))} required /></div>
+            <div className="sm:col-span-2"><Label>Opis</Label>
+              <Input value={rwDesc} onChange={(e) => setRwDesc(e.target.value)} /></div>
+            <div className="sm:col-span-2"><Label>Link do zdjęcia (opcjonalny)</Label>
+              <Input value={rwImage} onChange={(e) => setRwImage(e.target.value)} placeholder="https://..." /></div>
+          </div>
+          <Button type="submit" className="btn-gold h-11">Dodaj nagrodę</Button>
+        </form>
+
+        <div className="space-y-3">
+          <h3 className="font-semibold">Aktualne nagrody ({rewards.length})</h3>
+          {rewards.length === 0 && <p className="text-sm text-muted-foreground">Brak nagród.</p>}
+          {rewards.map((r) => (
+            <div key={r.id} className="rounded-xl border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                {r.image_url && <img src={r.image_url} alt={r.name} className="h-12 w-12 object-cover rounded" />}
+                <div>
+                  <p className="font-semibold">{r.name} <span className="text-[color:var(--gold)] font-bold ml-2">{r.points_cost} pkt</span></p>
+                  {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                  {!r.is_active && <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">Nieaktywna</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => toggleReward(r)}>{r.is_active ? "Wyłącz" : "Włącz"}</Button>
+                <Button size="sm" variant="ghost" onClick={() => deleteReward(r.id)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>

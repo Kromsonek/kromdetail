@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Moon, ShoppingCart, Sun } from "lucide-react";
+import { Moon, ShoppingCart, Sun, User } from "lucide-react";
 import logo from "@/assets/logo.jpeg";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeProvider";
@@ -22,6 +22,11 @@ export function Header() {
           <a href="#kontakt" className="hover:text-[color:var(--gold)] transition-colors">Kontakt</a>
         </nav>
         <div className="flex items-center gap-2">
+          <Link to="/account" aria-label="Konto">
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
+            </Button>
+          </Link>
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Koszyk" className="relative">
             <ShoppingCart className="h-5 w-5" />
             {items.length > 0 && (
