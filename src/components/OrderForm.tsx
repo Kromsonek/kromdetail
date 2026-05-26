@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,7 +23,35 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
   const { items, total, clear } = useCart();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ customer_name: "", phone: "", email: "", car_make_model: "", location: "", preferred_date: "", notes: "" });
+  const [cars, setCars] = useState<{ id: string; label: string; make_model: string }[]>([]);
+  const [loggedIn, setLoggedIn] = useState(false);
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) { setLoggedIn(false); return; }
+      setLoggedIn(true);
+      const [{ data: p }, { data: c }] = await Promise.all([
+        supabase.from("profiles").select("full_name,phone,email,default_location").eq("user_id", data.user.id).maybeSingle(),
+        supabase.from("car_profiles").select("id,label,make_model").eq("user_id", data.user.id),
+      ]);
+      if (p) setForm((f) => ({
+        ...f,
+        customer_name: f.customer_name || p.full_name || "",
+        phone: f.phone || p.phone || "",
+        email: f.email || p.email || "",
+        location: f.location || p.default_location || "",
+      }));
+      if (c) setCars(c);
+    })();
+  }, [open]);
+
+  const pickCar = (id: string) => {
+    const c = cars.find((x) => x.id === id);
+    if (c) set("car_make_model", c.make_model);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +75,21 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="font-display text-2xl">Formularz zamówienia</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="space-y-3">
+          {!loggedIn && (
+            <div className="text-xs text-muted-foreground bg-muted/40 border rounded-md p-2">
+              Załóż <a href="/auth" className="underline">konto</a>, aby zbierać punkty (1 pkt = 10 zł) i zapisać profile aut.
+            </div>
+          )}
+          {cars.length > 0 && (
+            <div>
+              <Label>Wybierz zapisany samochód</Label>
+              <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                onChange={(e) => pickCar(e.target.value)} defaultValue="">
+                <option value="">— wybierz —</option>
+                {cars.map((c) => <option key={c.id} value={c.id}>{c.label} — {c.make_model}</option>)}
+              </select>
+            </div>
+          )}
           <div><Label>Imię i nazwisko *</Label><Input value={form.customer_name} onChange={(e) => set("customer_name", e.target.value)} required /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Telefon *</Label><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} required /></div>
