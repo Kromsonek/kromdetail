@@ -61,7 +61,7 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
     if (c) set("car_make_model", c.make_model);
   };
 
-  const buildMessage = (d: typeof form) => {
+  const buildMessage = (d: { customer_name: string; phone: string; email: string; car_make_model: string; location: string; preferred_date?: string; notes?: string }) => {
     const lines = [
       `Dzień dobry,`,
       ``,
