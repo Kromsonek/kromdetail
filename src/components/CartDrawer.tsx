@@ -32,6 +32,7 @@ export function CartDrawer() {
             <div className="flex justify-between"><span>Suma</span><span>{subtotal.toFixed(0)} zł</span></div>
             {discount > 0 && <div className="flex justify-between text-[color:var(--gold)]"><span>Rabat -10%</span><span>-{discount.toFixed(0)} zł</span></div>}
             <div className="flex justify-between font-display text-2xl pt-2"><span>Razem</span><span>{total.toFixed(0)} zł</span></div>
+            <p className="text-xs text-center text-muted-foreground pt-1">💳 Każda forma płatności na miejscu</p>
             <Button disabled={items.length === 0} className="w-full h-12 btn-gold mt-3" onClick={() => { setOpen(false); setOrderOpen(true); }}>
               Przejdź do realizacji
             </Button>
