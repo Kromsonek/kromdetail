@@ -8,6 +8,12 @@ import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const schema = z.object({
   customer_name: z.string().trim().min(2, "Podaj imię i nazwisko").max(100),
@@ -23,6 +29,8 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
   const { items, total, clear } = useCart();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ customer_name: "", phone: "", email: "", car_make_model: "", location: "", preferred_date: "", notes: "" });
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [time, setTime] = useState("");
   const [cars, setCars] = useState<{ id: string; label: string; make_model: string }[]>([]);
   const [loggedIn, setLoggedIn] = useState(false);
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
@@ -77,7 +85,7 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
         <form onSubmit={submit} className="space-y-3">
           {!loggedIn && (
             <div className="text-xs text-muted-foreground bg-muted/40 border rounded-md p-2">
-              Załóż <a href="/auth" className="underline">konto</a>, aby zbierać punkty (1 pkt = 10 zł) i zapisać profile aut.
+              Załóż <a href="/auth" className="underline">konto</a>, aby zbierać punkty (1 pkt = 5 zł) i zapisać profile aut.
             </div>
           )}
           {cars.length > 0 && (
@@ -97,7 +105,31 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
           </div>
           <div><Label>Marka i model *</Label><Input value={form.car_make_model} onChange={(e) => set("car_make_model", e.target.value)} placeholder="np. Audi A4" required /></div>
           <div><Label>Lokalizacja *</Label><Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Miejscowość, kod pocztowy / gmina" required /></div>
-          <div><Label>Preferowany termin</Label><Input value={form.preferred_date} onChange={(e) => set("preferred_date", e.target.value)} placeholder="np. sobota 14:00" /></div>
+          <div>
+            <Label>Preferowany termin</Label>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" className={cn("flex-1 justify-start text-left font-normal h-10", !date && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: pl }) : <span>Wybierz datę</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => { setDate(d); set("preferred_date", d ? `${format(d, "yyyy-MM-dd")}${time ? " " + time : ""}` : ""); }}
+                    disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}
+                    initialFocus
+                    locale={pl}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Input type="time" value={time} onChange={(e) => { setTime(e.target.value); set("preferred_date", date ? `${format(date, "yyyy-MM-dd")}${e.target.value ? " " + e.target.value : ""}` : ""); }} className="w-32" />
+            </div>
+          </div>
           <div><Label>Dodatkowe uwagi</Label><Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={3} /></div>
           <div className="rounded-lg border bg-secondary/40 p-3 text-sm">
             <p className="font-medium mb-1">Podsumowanie ({items.length})</p>
