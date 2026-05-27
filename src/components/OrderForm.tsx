@@ -61,21 +61,53 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
     if (c) set("car_make_model", c.make_model);
   };
 
-  const submit = async (e: React.FormEvent) => {
+  const buildMessage = (d: { customer_name: string; phone: string; email: string; car_make_model: string; location: string; preferred_date?: string; notes?: string }) => {
+    const lines = [
+      `Dzień dobry,`,
+      ``,
+      `chciałbym zarezerwować detailing w KromDetail.`,
+      ``,
+      `Imię i nazwisko: ${d.customer_name}`,
+      `Telefon: ${d.phone}`,
+      `E-mail: ${d.email}`,
+      `Samochód: ${d.car_make_model}`,
+      `Lokalizacja: ${d.location}`,
+      d.preferred_date ? `Preferowany termin: ${d.preferred_date}` : "",
+      ``,
+      `Wybrane usługi:`,
+      ...items.map((i) => `• ${i.name} — ${Number(i.price).toFixed(0)} zł`),
+      ``,
+      `Łącznie: ${total.toFixed(0)} zł`,
+      `Forma płatności: na miejscu (gotówka / BLIK / przelew)`,
+      d.notes ? `\nDodatkowe uwagi:\n${d.notes}` : "",
+      ``,
+      `Pozdrawiam,`,
+      d.customer_name,
+    ].filter(Boolean);
+    return lines.join("\n");
+  };
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     if (items.length === 0) { toast.error("Koszyk jest pusty"); return; }
-    setLoading(true);
-    const { error } = await supabase.functions.invoke("submit-order", {
-      body: { ...parsed.data, items: items.map((i) => ({ name: i.name, price: i.price, type: i.type })), total },
-    });
-    setLoading(false);
-    if (error) { toast.error("Nie udało się wysłać zamówienia"); return; }
-    toast.success("Zamówienie wysłane! Skontaktujemy się wkrótce.");
+    const subject = `Rezerwacja KromDetail — ${parsed.data.customer_name}`;
+    const body = buildMessage(parsed.data);
+    const to = "KromBiznes@gmail.com";
+    const mailto = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmail, "_blank");
+    setTimeout(() => { window.location.href = mailto; }, 300);
+    toast.success("Otwieramy gotową wiadomość — wystarczy kliknąć Wyślij.");
+  };
+
+  const reset = () => {
     clear();
     onOpenChange(false);
     setForm({ customer_name: "", phone: "", email: "", car_make_model: "", location: "", preferred_date: "", notes: "" });
+    setDate(undefined);
+    setTime("");
   };
 
   return (
@@ -136,7 +168,17 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
             {items.map((i) => <div key={i.id} className="flex justify-between text-xs"><span>{i.name}</span><span>{Number(i.price).toFixed(0)} zł</span></div>)}
             <div className="flex justify-between font-display text-lg mt-2 pt-2 border-t"><span>Razem</span><span>{total.toFixed(0)} zł</span></div>
           </div>
-          <Button type="submit" disabled={loading} className="w-full h-12 btn-gold">{loading ? "Wysyłanie..." : "Wyślij zamówienie"}</Button>
+          <div className="rounded-md border bg-[color:var(--gold)]/10 p-3 text-xs text-center">
+            💳 Każda forma płatności <strong>na miejscu</strong> — gotówka, BLIK lub przelew.
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            Po kliknięciu otworzymy gotową wiadomość w Gmailu / Twoim kliencie poczty. Wystarczy kliknąć „Wyślij".
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1 h-12" onClick={() => onOpenChange(false)}>Anuluj</Button>
+            <Button type="submit" disabled={loading} className="flex-1 h-12 btn-gold">Otwórz gotową wiadomość</Button>
+          </div>
+          <button type="button" onClick={reset} className="w-full text-xs text-muted-foreground underline">Wyczyść koszyk i zamknij</button>
         </form>
       </DialogContent>
     </Dialog>
