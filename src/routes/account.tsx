@@ -128,7 +128,7 @@ function AccountPage() {
                 <Award className="h-4 w-4" />Karnet lojalnościowy <span className="text-[color:var(--gold)] font-semibold">NOWOŚĆ!</span>
               </div>
               <p className="font-display text-4xl mt-1">{profile?.points ?? 0} pkt</p>
-              <p className="text-xs text-muted-foreground mt-1">1 pkt za każde 10 zł wydane na zamówienie.</p>
+              <p className="text-xs text-muted-foreground mt-1">1 pkt za każde 5 zł wydane na zamówienie.</p>
             </div>
           </div>
 
