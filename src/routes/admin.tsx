@@ -113,6 +113,18 @@ function AdminPage() {
     setIsActive(true);
   };
 
+  const saveIntro = async () => {
+    setSavingIntro(true);
+    const rows = [
+      { key: "detailing_intro_title", value: introTitle },
+      { key: "detailing_intro_body", value: introBody },
+    ];
+    const { error } = await (supabase.from as any)("site_content").upsert(rows, { onConflict: "key" });
+    setSavingIntro(false);
+    if (error) return toast.error(error.message);
+    toast.success("Treści zapisane");
+  };
+
   const createPromo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Podaj powód promocji");
@@ -326,6 +338,21 @@ function AdminPage() {
         <div className="flex items-center gap-2 mt-12 mb-6">
           <Award className="h-5 w-5 text-[color:var(--gold)]" />
           <h2 className="font-display text-3xl">Nagrody (karnet lojalnościowy)</h2>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-6 mb-12 space-y-4">
+          <h2 className="font-display text-2xl">Treści strony — sekcja „O detailingu"</h2>
+          <div>
+            <Label>Tytuł</Label>
+            <Input value={introTitle} onChange={(e) => setIntroTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label>Treść</Label>
+            <Textarea rows={5} value={introBody} onChange={(e) => setIntroBody(e.target.value)} />
+          </div>
+          <Button onClick={saveIntro} disabled={savingIntro} className="btn-gold h-11">
+            {savingIntro ? "Zapisywanie..." : "Zapisz treść"}
+          </Button>
         </div>
 
         <form onSubmit={addReward} className="rounded-2xl border bg-card p-6 mb-8 space-y-4">
