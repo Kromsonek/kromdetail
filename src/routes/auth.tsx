@@ -41,7 +41,7 @@ function AuthPage() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Zalogowano");
-    nav({ to: "/account" });
+    nav({ to: "/" });
   };
 
   return (
@@ -58,7 +58,7 @@ function AuthPage() {
           </button>
         </div>
         <h1 className="font-display text-2xl">{mode === "login" ? "Zaloguj się" : "Utwórz konto"}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Zbieraj punkty (1 pkt = 10 zł) i zapisz profile aut.</p>
+        <p className="text-sm text-muted-foreground mt-1">Zbieraj punkty (1 pkt = 5 zł) i zapisz profile aut.</p>
         <div className="mt-6 space-y-4">
           {mode === "signup" && (
             <div>

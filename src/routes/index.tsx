@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
+import { DetailingIntro } from "@/components/DetailingIntro";
 import { About } from "@/components/About";
 import { Packages } from "@/components/Packages";
 import { CustomServices } from "@/components/CustomServices";
@@ -23,6 +24,7 @@ function Index() {
       <Header />
       <main>
         <Hero />
+        <DetailingIntro />
         <About />
         <Packages />
         <CustomServices />
