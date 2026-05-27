@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Trash2, LogOut, Tag, Award } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -37,6 +38,9 @@ function AdminPage() {
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [services, setServices] = useState<Svc[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [introTitle, setIntroTitle] = useState("");
+  const [introBody, setIntroBody] = useState("");
+  const [savingIntro, setSavingIntro] = useState(false);
   const [rwName, setRwName] = useState("");
   const [rwDesc, setRwDesc] = useState("");
   const [rwCost, setRwCost] = useState<number>(50);
@@ -78,6 +82,15 @@ function AdminPage() {
       (supabase.from as any)("promotions").select("*").order("created_at", { ascending: false }),
       supabase.from("rewards").select("*").order("points_cost"),
     ]);
+    const { data: contentRows } = await supabase
+      .from("site_content")
+      .select("key,value")
+      .in("key", ["detailing_intro_title", "detailing_intro_body"]);
+    if (contentRows) {
+      const map = Object.fromEntries(contentRows.map((r: any) => [r.key, r.value]));
+      setIntroTitle(map.detailing_intro_title || "");
+      setIntroBody(map.detailing_intro_body || "");
+    }
     if (pkgs.data) setPackages(pkgs.data as Pkg[]);
     if (svcs.data) setServices(svcs.data as Svc[]);
     if (promos.data) setPromotions(promos.data as Promotion[]);
