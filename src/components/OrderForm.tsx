@@ -14,6 +14,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const schema = z.object({
   customer_name: z.string().trim().min(2, "Podaj imię i nazwisko").max(100),
@@ -31,6 +32,7 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
   const [form, setForm] = useState({ customer_name: "", phone: "", email: "", car_make_model: "", location: "", preferred_date: "", notes: "" });
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState("");
+  const [consent, setConsent] = useState(false);
   const [cars, setCars] = useState<{ id: string; label: string; make_model: string }[]>([]);
   const [loggedIn, setLoggedIn] = useState(false);
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
@@ -89,6 +91,7 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consent) { toast.error("Zaznacz zgodę na wykonanie pracy przez osobę niepełnoletnią."); return; }
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     if (items.length === 0) { toast.error("Koszyk jest pusty"); return; }
@@ -171,12 +174,16 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
           <div className="rounded-md border bg-[color:var(--gold)]/10 p-3 text-xs text-center">
             💳 Każda forma płatności <strong>na miejscu</strong> — gotówka, BLIK lub przelew.
           </div>
+          <label className="flex items-start gap-2 text-xs bg-muted/40 border rounded-md p-2 cursor-pointer">
+            <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />
+            <span>Wyrażam zgodę, aby pracę detailingową wykonała <strong>osoba niepełnoletnia</strong> (wymagane).</span>
+          </label>
           <p className="text-xs text-muted-foreground text-center">
             Po kliknięciu otworzymy gotową wiadomość w Gmailu / Twoim kliencie poczty. Wystarczy kliknąć „Wyślij".
           </p>
           <div className="flex gap-2">
             <Button type="button" variant="outline" className="flex-1 h-12" onClick={() => onOpenChange(false)}>Anuluj</Button>
-            <Button type="submit" disabled={loading} className="flex-1 h-12 btn-gold">Otwórz gotową wiadomość</Button>
+            <Button type="submit" disabled={loading || !consent} className="flex-1 h-12 btn-gold">Otwórz gotową wiadomość</Button>
           </div>
           <button type="button" onClick={reset} className="w-full text-xs text-muted-foreground underline">Wyczyść koszyk i zamknij</button>
         </form>
