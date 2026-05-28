@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, LogOut, Tag, Award } from "lucide-react";
+import { Trash2, LogOut, Tag, Award, ClipboardCheck, Check, X, Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -27,6 +28,20 @@ type Promotion = {
 type Pkg = { id: string; name: string };
 type Svc = { id: string; name: string };
 type Reward = { id: string; name: string; description: string | null; points_cost: number; image_url: string | null; is_active: boolean };
+type Order = {
+  id: string;
+  customer_name: string;
+  phone: string;
+  email: string;
+  car_make_model: string;
+  location: string;
+  preferred_date: string | null;
+  notes: string | null;
+  items: any;
+  total: number;
+  status: string;
+  created_at: string;
+};
 
 function AdminPage() {
   const nav = useNavigate();
@@ -38,6 +53,8 @@ function AdminPage() {
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [services, setServices] = useState<Svc[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [editReward, setEditReward] = useState<Reward | null>(null);
   const [introTitle, setIntroTitle] = useState("");
   const [introBody, setIntroBody] = useState("");
   const [savingIntro, setSavingIntro] = useState(false);
@@ -76,11 +93,12 @@ function AdminPage() {
   }, []);
 
   const loadAll = async () => {
-    const [pkgs, svcs, promos, rws] = await Promise.all([
+    const [pkgs, svcs, promos, rws, ords] = await Promise.all([
       supabase.from("packages").select("id,name").order("sort_order"),
       supabase.from("services").select("id,name").order("sort_order"),
       (supabase.from as any)("promotions").select("*").order("created_at", { ascending: false }),
-      supabase.from("rewards").select("*").order("points_cost"),
+      supabase.from("rewards").select("*").order("points_cost", { ascending: true }),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
     ]);
     const { data: contentRows } = await supabase
       .from("site_content")
@@ -95,6 +113,7 @@ function AdminPage() {
     if (svcs.data) setServices(svcs.data as Svc[]);
     if (promos.data) setPromotions(promos.data as Promotion[]);
     if (rws.data) setRewards(rws.data as Reward[]);
+    if (ords.data) setOrders(ords.data as Order[]);
   };
 
   const targetOptions: { id: string; label: string }[] =
@@ -186,6 +205,27 @@ function AdminPage() {
     loadAll();
   };
 
+  const saveRewardEdit = async () => {
+    if (!editReward) return;
+    const { error } = await supabase.from("rewards").update({
+      name: editReward.name,
+      description: editReward.description,
+      points_cost: editReward.points_cost,
+      image_url: editReward.image_url,
+    }).eq("id", editReward.id);
+    if (error) return toast.error(error.message);
+    toast.success("Zaktualizowano nagrodę");
+    setEditReward(null);
+    loadAll();
+  };
+
+  const setOrderStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(status === "approved" ? "Zatwierdzono — punkty przyznane" : "Status zaktualizowany");
+    loadAll();
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     nav({ to: "/auth" });
@@ -239,6 +279,62 @@ function AdminPage() {
       </header>
 
       <main className="container mx-auto px-4 py-10 max-w-4xl">
+        <div className="flex items-center gap-2 mb-6">
+          <ClipboardCheck className="h-5 w-5 text-[color:var(--gold)]" />
+          <h2 className="font-display text-3xl">Zamówienia do zatwierdzenia</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Klient otrzyma punkty lojalnościowe (1 pkt = 5 zł) <strong>dopiero po zatwierdzeniu</strong> zamówienia.
+        </p>
+        <div className="space-y-3 mb-12">
+          {orders.length === 0 && (
+            <p className="text-sm text-muted-foreground">Brak zamówień.</p>
+          )}
+          {orders.map((o) => (
+            <div key={o.id} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex-1 min-w-[240px]">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">{o.customer_name}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      o.status === "approved" ? "bg-green-600 text-white" :
+                      o.status === "rejected" ? "bg-destructive text-destructive-foreground" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {o.status === "approved" ? "Zatwierdzone" : o.status === "rejected" ? "Odrzucone" : "Nowe"}
+                    </span>
+                    <span className="text-[color:var(--gold)] font-bold">{Number(o.total).toFixed(0)} zł</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {o.phone} · {o.email} · {o.car_make_model} · {o.location}
+                    {o.preferred_date && <> · termin: {o.preferred_date}</>}
+                  </p>
+                  {Array.isArray(o.items) && (
+                    <ul className="text-xs mt-2 list-disc pl-4">
+                      {o.items.map((it: any, idx: number) => (
+                        <li key={idx}>{it.name} — {Number(it.price).toFixed(0)} zł</li>
+                      ))}
+                    </ul>
+                  )}
+                  {o.notes && <p className="text-xs italic mt-1">„{o.notes}"</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {o.status !== "approved" && (
+                    <Button size="sm" onClick={() => setOrderStatus(o.id, "approved")} className="bg-green-600 hover:bg-green-700 text-white">
+                      <Check className="h-4 w-4 mr-1" />Zatwierdź
+                    </Button>
+                  )}
+                  {o.status === "new" && (
+                    <Button size="sm" variant="outline" onClick={() => setOrderStatus(o.id, "rejected")}>
+                      <X className="h-4 w-4 mr-1" />Odrzuć
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="flex items-center gap-2 mb-6">
           <Tag className="h-5 w-5 text-[color:var(--gold)]" />
           <h2 className="font-display text-3xl">Promocje</h2>
@@ -384,6 +480,9 @@ function AdminPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setEditReward(r)}>
+                  <Pencil className="h-4 w-4 mr-1" />Edytuj
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => toggleReward(r)}>{r.is_active ? "Wyłącz" : "Włącz"}</Button>
                 <Button size="sm" variant="ghost" onClick={() => deleteReward(r.id)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -392,6 +491,28 @@ function AdminPage() {
             </div>
           ))}
         </div>
+
+        <Dialog open={!!editReward} onOpenChange={(v) => !v && setEditReward(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edytuj nagrodę</DialogTitle></DialogHeader>
+            {editReward && (
+              <div className="space-y-3">
+                <div><Label>Nazwa</Label>
+                  <Input value={editReward.name} onChange={(e) => setEditReward({ ...editReward, name: e.target.value })} /></div>
+                <div><Label>Koszt (pkt)</Label>
+                  <Input type="number" min={1} value={editReward.points_cost} onChange={(e) => setEditReward({ ...editReward, points_cost: Number(e.target.value) })} /></div>
+                <div><Label>Opis</Label>
+                  <Textarea rows={3} value={editReward.description ?? ""} onChange={(e) => setEditReward({ ...editReward, description: e.target.value })} /></div>
+                <div><Label>Link do zdjęcia</Label>
+                  <Input value={editReward.image_url ?? ""} onChange={(e) => setEditReward({ ...editReward, image_url: e.target.value })} placeholder="https://..." /></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditReward(null)}>Anuluj</Button>
+                  <Button onClick={saveRewardEdit} className="flex-1 btn-gold">Zapisz</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
