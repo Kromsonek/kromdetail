@@ -1,13 +1,24 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Moon, ShoppingCart, Sun, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import logo from "@/assets/logo.jpeg";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeProvider";
 import { useCart } from "@/contexts/CartContext";
+import { AuthDialog } from "./AuthDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export function Header() {
   const { theme, toggle } = useTheme();
   const { items, setOpen } = useCart();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const nav = useNavigate();
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setLoggedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setLoggedIn(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur bg-background/80 border-b">
       <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-3">
@@ -22,11 +33,10 @@ export function Header() {
           <a href="#kontakt" className="hover:text-[color:var(--gold)] transition-colors">Kontakt</a>
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/account" aria-label="Konto">
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" aria-label="Konto"
+            onClick={() => { if (loggedIn) nav({ to: "/account" }); else setAuthOpen(true); }}>
+            <User className="h-5 w-5" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Koszyk" className="relative">
             <ShoppingCart className="h-5 w-5" />
             {items.length > 0 && (
@@ -40,6 +50,7 @@ export function Header() {
           </Button>
         </div>
       </div>
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
     </header>
   );
 }
