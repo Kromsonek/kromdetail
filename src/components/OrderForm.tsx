@@ -89,12 +89,28 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
     return lines.join("\n");
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consent) { toast.error("Zaznacz zgodę na wykonanie pracy przez osobę niepełnoletnią."); return; }
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     if (items.length === 0) { toast.error("Koszyk jest pusty"); return; }
+    setLoading(true);
+    // Zapisz zamówienie do bazy, aby admin mógł je zatwierdzić i przyznać punkty
+    const { error: insErr } = await supabase.from("orders").insert({
+      customer_name: parsed.data.customer_name,
+      phone: parsed.data.phone,
+      email: parsed.data.email,
+      car_make_model: parsed.data.car_make_model,
+      location: parsed.data.location,
+      preferred_date: parsed.data.preferred_date || null,
+      notes: parsed.data.notes || null,
+      items: items as any,
+      total,
+      status: "new",
+    });
+    setLoading(false);
+    if (insErr) { toast.error("Nie udało się zapisać zamówienia: " + insErr.message); return; }
     const subject = `Rezerwacja KromDetail — ${parsed.data.customer_name}`;
     const body = buildMessage(parsed.data);
     const to = "KromBiznes@gmail.com";
@@ -102,7 +118,7 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
     const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(gmail, "_blank");
     setTimeout(() => { window.location.href = mailto; }, 300);
-    toast.success("Otwieramy gotową wiadomość — wystarczy kliknąć Wyślij.");
+    toast.success("Zamówienie wysłane. Punkty otrzymasz po zatwierdzeniu przez obsługę.");
   };
 
   const reset = () => {
