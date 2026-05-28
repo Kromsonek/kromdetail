@@ -4,10 +4,12 @@ import { useCart } from "@/contexts/CartContext";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { OrderForm } from "./OrderForm";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function CartDrawer() {
   const { items, remove, open, setOpen, subtotal, discount, total } = useCart();
   const [orderOpen, setOrderOpen] = useState(false);
+  const [consent, setConsent] = useState(false);
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -33,7 +35,11 @@ export function CartDrawer() {
             {discount > 0 && <div className="flex justify-between text-[color:var(--gold)]"><span>Rabat -10%</span><span>-{discount.toFixed(0)} zł</span></div>}
             <div className="flex justify-between font-display text-2xl pt-2"><span>Razem</span><span>{total.toFixed(0)} zł</span></div>
             <p className="text-xs text-center text-muted-foreground pt-1">💳 Każda forma płatności na miejscu</p>
-            <Button disabled={items.length === 0} className="w-full h-12 btn-gold mt-3" onClick={() => { setOpen(false); setOrderOpen(true); }}>
+            <label className="flex items-start gap-2 text-xs bg-muted/40 border rounded-md p-2 mt-2 cursor-pointer">
+              <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />
+              <span>Wyrażam zgodę, aby pracę detailingową wykonała <strong>osoba niepełnoletnia</strong> (wymagane).</span>
+            </label>
+            <Button disabled={items.length === 0 || !consent} className="w-full h-12 btn-gold mt-3" onClick={() => { setOpen(false); setOrderOpen(true); }}>
               Przejdź do realizacji
             </Button>
           </div>
