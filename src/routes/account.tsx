@@ -51,7 +51,7 @@ function AccountPage() {
     const [p, c, r, t, role] = await Promise.all([
       supabase.from("profiles").select("full_name,phone,email,default_location,points").eq("user_id", uid).maybeSingle(),
       supabase.from("car_profiles").select("*").eq("user_id", uid).order("created_at"),
-      supabase.from("rewards").select("*").eq("is_active", true).order("points_cost"),
+      supabase.from("rewards").select("*").eq("is_active", true).order("points_cost", { ascending: true }),
       supabase.from("point_transactions").select("id,delta,reason,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(20),
       supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle(),
     ]);
