@@ -157,11 +157,11 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
           <div><Label>Marka i model *</Label><Input value={form.car_make_model} onChange={(e) => set("car_make_model", e.target.value)} placeholder="np. Audi A4" required /></div>
           <div><Label>Lokalizacja *</Label><Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Miejscowość, kod pocztowy / gmina" required /></div>
           <div>
-            <Label>Preferowany termin</Label>
+            <Label>Termin realizacji *</Label>
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button type="button" variant="outline" className={cn("flex-1 justify-start text-left font-normal h-10", !date && "text-muted-foreground")}>
+                  <Button type="button" variant="outline" className={cn("flex-1 justify-start text-left font-normal h-10", !date && "text-muted-foreground border-destructive/40")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "PPP", { locale: pl }) : <span>Wybierz datę</span>}
                   </Button>
@@ -180,6 +180,7 @@ export function OrderForm({ open, onOpenChange }: { open: boolean; onOpenChange:
               </Popover>
               <Input type="time" value={time} onChange={(e) => { setTime(e.target.value); set("preferred_date", date ? `${format(date, "yyyy-MM-dd")}${e.target.value ? " " + e.target.value : ""}` : ""); }} className="w-32" />
             </div>
+            {!date && <p className="text-[11px] text-muted-foreground mt-1">Wymagane — kliknij, aby otworzyć kalendarz.</p>}
           </div>
           <div><Label>Dodatkowe uwagi</Label><Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={3} /></div>
           <div className="rounded-lg border bg-secondary/40 p-3 text-sm">
