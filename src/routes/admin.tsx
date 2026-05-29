@@ -226,6 +226,14 @@ function AdminPage() {
     loadAll();
   };
 
+  const deleteOrder = async (id: string) => {
+    if (!confirm("Usunąć to zamówienie?")) return;
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Zamówienie usunięte");
+    loadAll();
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     nav({ to: "/auth" });
@@ -329,6 +337,9 @@ function AdminPage() {
                       <X className="h-4 w-4 mr-1" />Odrzuć
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" onClick={() => deleteOrder(o.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </div>
             </div>
