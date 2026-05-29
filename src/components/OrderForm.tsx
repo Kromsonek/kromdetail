@@ -22,7 +22,7 @@ const schema = z.object({
   email: z.string().trim().email("Niepoprawny email").max(255),
   car_make_model: z.string().trim().min(2, "Podaj markę i model").max(100),
   location: z.string().trim().min(2, "Podaj lokalizację").max(200),
-  preferred_date: z.string().trim().max(100).optional(),
+  preferred_date: z.string().trim().min(1, "Wybierz datę realizacji").max(100),
   notes: z.string().trim().max(1000).optional(),
 });
 
