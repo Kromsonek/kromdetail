@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, LogOut, Tag, Award, ClipboardCheck, Check, X, Pencil } from "lucide-react";
+import { Trash2, LogOut, Tag, Award, ClipboardCheck, Check, X, Pencil, Package } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -26,6 +26,7 @@ type Promotion = {
 };
 
 type Pkg = { id: string; name: string };
+type PkgFull = { id: string; name: string; description: string | null; price: number; features: string[]; is_featured: boolean; sort_order: number };
 type Svc = { id: string; name: string };
 type Reward = { id: string; name: string; description: string | null; points_cost: number; image_url: string | null; is_active: boolean };
 type Order = {
@@ -51,6 +52,8 @@ function AdminPage() {
 
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [packages, setPackages] = useState<Pkg[]>([]);
+  const [packagesFull, setPackagesFull] = useState<PkgFull[]>([]);
+  const [editPkg, setEditPkg] = useState<PkgFull | null>(null);
   const [services, setServices] = useState<Svc[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -93,8 +96,9 @@ function AdminPage() {
   }, []);
 
   const loadAll = async () => {
-    const [pkgs, svcs, promos, rws, ords] = await Promise.all([
+    const [pkgs, pkgsFull, svcs, promos, rws, ords] = await Promise.all([
       supabase.from("packages").select("id,name").order("sort_order"),
+      supabase.from("packages").select("*").order("sort_order"),
       supabase.from("services").select("id,name").order("sort_order"),
       (supabase.from as any)("promotions").select("*").order("created_at", { ascending: false }),
       supabase.from("rewards").select("*").order("points_cost", { ascending: true }),
@@ -110,6 +114,7 @@ function AdminPage() {
       setIntroBody(map.detailing_intro_body || "");
     }
     if (pkgs.data) setPackages(pkgs.data as Pkg[]);
+    if (pkgsFull.data) setPackagesFull(pkgsFull.data as unknown as PkgFull[]);
     if (svcs.data) setServices(svcs.data as Svc[]);
     if (promos.data) setPromotions(promos.data as Promotion[]);
     if (rws.data) setRewards(rws.data as Reward[]);
@@ -216,6 +221,22 @@ function AdminPage() {
     if (error) return toast.error(error.message);
     toast.success("Zaktualizowano nagrodę");
     setEditReward(null);
+    loadAll();
+  };
+
+  const savePkgEdit = async () => {
+    if (!editPkg) return;
+    const { error } = await supabase.from("packages").update({
+      name: editPkg.name,
+      description: editPkg.description,
+      price: editPkg.price,
+      features: editPkg.features as any,
+      is_featured: editPkg.is_featured,
+      sort_order: editPkg.sort_order,
+    }).eq("id", editPkg.id);
+    if (error) return toast.error(error.message);
+    toast.success("Pakiet zaktualizowany");
+    setEditPkg(null);
     loadAll();
   };
 
