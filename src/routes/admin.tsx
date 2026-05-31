@@ -464,6 +464,32 @@ function AdminPage() {
         </div>
 
         <div className="flex items-center gap-2 mt-12 mb-6">
+          <Package className="h-5 w-5 text-[color:var(--gold)]" />
+          <h2 className="font-display text-3xl">Pakiety</h2>
+        </div>
+        <div className="space-y-3 mb-12">
+          {packagesFull.length === 0 && <p className="text-sm text-muted-foreground">Brak pakietów.</p>}
+          {packagesFull.map((p) => (
+            <div key={p.id} className="rounded-xl border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <p className="font-semibold">
+                  {p.name}
+                  <span className="text-[color:var(--gold)] font-bold ml-2">{Number(p.price).toFixed(0)} zł</span>
+                  {p.is_featured && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-[color:var(--gold)] text-[color:var(--gold-foreground)]">Polecany</span>}
+                </p>
+                {p.description && <p className="text-xs text-muted-foreground mt-1">{p.description}</p>}
+                {p.features?.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">{p.features.length} cech</p>
+                )}
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setEditPkg(p)}>
+                <Pencil className="h-4 w-4 mr-1" />Edytuj
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mt-12 mb-6">
           <Award className="h-5 w-5 text-[color:var(--gold)]" />
           <h2 className="font-display text-3xl">Nagrody (karnet lojalnościowy)</h2>
         </div>
