@@ -571,6 +571,35 @@ function AdminPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!editPkg} onOpenChange={(v) => !v && setEditPkg(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edytuj pakiet</DialogTitle></DialogHeader>
+            {editPkg && (
+              <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+                <div><Label>Nazwa</Label>
+                  <Input value={editPkg.name} onChange={(e) => setEditPkg({ ...editPkg, name: e.target.value })} /></div>
+                <div><Label>Cena (zł)</Label>
+                  <Input type="number" min={0} value={editPkg.price} onChange={(e) => setEditPkg({ ...editPkg, price: Number(e.target.value) })} /></div>
+                <div><Label>Opis</Label>
+                  <Textarea rows={3} value={editPkg.description ?? ""} onChange={(e) => setEditPkg({ ...editPkg, description: e.target.value })} /></div>
+                <div><Label>Cechy (każda w nowej linii)</Label>
+                  <Textarea rows={6} value={(editPkg.features || []).join("\n")}
+                    onChange={(e) => setEditPkg({ ...editPkg, features: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} /></div>
+                <div><Label>Kolejność wyświetlania</Label>
+                  <Input type="number" value={editPkg.sort_order} onChange={(e) => setEditPkg({ ...editPkg, sort_order: Number(e.target.value) })} /></div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={editPkg.is_featured} onCheckedChange={(v) => setEditPkg({ ...editPkg, is_featured: !!v })} />
+                  <span className="text-sm">Oznacz jako polecany</span>
+                </label>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditPkg(null)}>Anuluj</Button>
+                  <Button onClick={savePkgEdit} className="flex-1 btn-gold">Zapisz</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
