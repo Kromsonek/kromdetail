@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, LogOut, Tag, Award, ClipboardCheck, Check, X, Pencil, Package } from "lucide-react";
+import { Trash2, LogOut, Tag, Award, ClipboardCheck, Check, X, Pencil, Package, Home, Wrench } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -28,6 +28,7 @@ type Promotion = {
 type Pkg = { id: string; name: string };
 type PkgFull = { id: string; name: string; description: string | null; price: number; features: string[]; is_featured: boolean; sort_order: number };
 type Svc = { id: string; name: string };
+type SvcFull = { id: string; name: string; description: string | null; price: number; sort_order: number };
 type Reward = { id: string; name: string; description: string | null; points_cost: number; image_url: string | null; is_active: boolean };
 type Order = {
   id: string;
@@ -55,6 +56,8 @@ function AdminPage() {
   const [packagesFull, setPackagesFull] = useState<PkgFull[]>([]);
   const [editPkg, setEditPkg] = useState<PkgFull | null>(null);
   const [services, setServices] = useState<Svc[]>([]);
+  const [servicesFull, setServicesFull] = useState<SvcFull[]>([]);
+  const [editSvc, setEditSvc] = useState<SvcFull | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [editReward, setEditReward] = useState<Reward | null>(null);
@@ -96,10 +99,11 @@ function AdminPage() {
   }, []);
 
   const loadAll = async () => {
-    const [pkgs, pkgsFull, svcs, promos, rws, ords] = await Promise.all([
+    const [pkgs, pkgsFull, svcs, svcsFull, promos, rws, ords] = await Promise.all([
       supabase.from("packages").select("id,name").order("sort_order"),
       supabase.from("packages").select("*").order("sort_order"),
       supabase.from("services").select("id,name").order("sort_order"),
+      supabase.from("services").select("*").order("sort_order"),
       (supabase.from as any)("promotions").select("*").order("created_at", { ascending: false }),
       supabase.from("rewards").select("*").order("points_cost", { ascending: true }),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
@@ -116,6 +120,7 @@ function AdminPage() {
     if (pkgs.data) setPackages(pkgs.data as Pkg[]);
     if (pkgsFull.data) setPackagesFull(pkgsFull.data as unknown as PkgFull[]);
     if (svcs.data) setServices(svcs.data as Svc[]);
+    if (svcsFull.data) setServicesFull(svcsFull.data as unknown as SvcFull[]);
     if (promos.data) setPromotions(promos.data as Promotion[]);
     if (rws.data) setRewards(rws.data as Reward[]);
     if (ords.data) setOrders(ords.data as Order[]);
@@ -240,6 +245,28 @@ function AdminPage() {
     loadAll();
   };
 
+  const saveSvcEdit = async () => {
+    if (!editSvc) return;
+    const { error } = await supabase.from("services").update({
+      name: editSvc.name,
+      description: editSvc.description,
+      price: editSvc.price,
+      sort_order: editSvc.sort_order,
+    }).eq("id", editSvc.id);
+    if (error) return toast.error(error.message);
+    toast.success("Usługa zaktualizowana");
+    setEditSvc(null);
+    loadAll();
+  };
+
+  const deleteSvc = async (id: string) => {
+    if (!confirm("Usunąć tę usługę?")) return;
+    const { error } = await supabase.from("services").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Usługa usunięta");
+    loadAll();
+  };
+
   const setOrderStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
@@ -297,10 +324,13 @@ function AdminPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="font-display text-2xl">KromDetail · Admin</Link>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground hidden sm:inline">{userEmail}</span>
-            <Button variant="ghost" size="sm" onClick={logout}>
+          <span className="font-display text-2xl">KromDetail · Admin</span>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground hidden sm:inline mr-2">{userEmail}</span>
+            <Link to="/" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 h-9 text-sm font-medium hover:bg-accent">
+              <Home className="h-4 w-4 mr-1" /> Strona główna
+            </Link>
+            <Button variant="outline" size="sm" onClick={logout} className="h-9">
               <LogOut className="h-4 w-4 mr-1" /> Wyloguj
             </Button>
           </div>
@@ -485,6 +515,36 @@ function AdminPage() {
               <Button size="sm" variant="outline" onClick={() => setEditPkg(p)}>
                 <Pencil className="h-4 w-4 mr-1" />Edytuj
               </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mt-12 mb-6">
+          <Wrench className="h-5 w-5 text-[color:var(--gold)]" />
+          <h2 className="font-display text-3xl">Usługi (Krom Custom)</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Pojedyncze usługi, z których klient może składać swój własny pakiet.
+        </p>
+        <div className="space-y-3 mb-12">
+          {servicesFull.length === 0 && <p className="text-sm text-muted-foreground">Brak usług.</p>}
+          {servicesFull.map((s) => (
+            <div key={s.id} className="rounded-xl border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <p className="font-semibold">
+                  {s.name}
+                  <span className="text-[color:var(--gold)] font-bold ml-2">{Number(s.price).toFixed(0)} zł</span>
+                </p>
+                {s.description && <p className="text-xs text-muted-foreground mt-1">{s.description}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setEditSvc(s)}>
+                  <Pencil className="h-4 w-4 mr-1" />Edytuj
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => deleteSvc(s.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
