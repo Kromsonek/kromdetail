@@ -92,9 +92,8 @@ function AccountPage() {
     if (!profile || !userId) return;
     if (profile.points < r.points_cost) return toast.error("Za mało punktów");
     if (!confirm(`Wymienić ${r.points_cost} pkt na: ${r.name}?`)) return;
-    const { error: pe } = await supabase.from("profiles").update({ points: profile.points - r.points_cost }).eq("user_id", userId);
+    const { error: pe } = await supabase.rpc("redeem_reward", { _reward_id: r.id });
     if (pe) return toast.error(pe.message);
-    await supabase.from("point_transactions").insert({ user_id: userId, delta: -r.points_cost, reason: `Nagroda: ${r.name}`, reward_id: r.id });
     toast.success("Skontaktujemy się w sprawie nagrody!");
     loadAll(userId);
   };
