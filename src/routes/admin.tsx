@@ -660,6 +660,28 @@ function AdminPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!editSvc} onOpenChange={(v) => !v && setEditSvc(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edytuj usługę</DialogTitle></DialogHeader>
+            {editSvc && (
+              <div className="space-y-3">
+                <div><Label>Nazwa</Label>
+                  <Input value={editSvc.name} onChange={(e) => setEditSvc({ ...editSvc, name: e.target.value })} /></div>
+                <div><Label>Cena (zł)</Label>
+                  <Input type="number" min={0} value={editSvc.price} onChange={(e) => setEditSvc({ ...editSvc, price: Number(e.target.value) })} /></div>
+                <div><Label>Opis</Label>
+                  <Textarea rows={3} value={editSvc.description ?? ""} onChange={(e) => setEditSvc({ ...editSvc, description: e.target.value })} /></div>
+                <div><Label>Kolejność wyświetlania</Label>
+                  <Input type="number" value={editSvc.sort_order} onChange={(e) => setEditSvc({ ...editSvc, sort_order: Number(e.target.value) })} /></div>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditSvc(null)}>Anuluj</Button>
+                  <Button onClick={saveSvcEdit} className="flex-1 btn-gold">Zapisz</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
