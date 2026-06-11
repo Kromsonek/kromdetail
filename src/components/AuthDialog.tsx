@@ -68,9 +68,6 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <Button type="submit" disabled={loading} className="w-full h-11 btn-gold">
             {loading ? "Proszę czekać..." : mode === "login" ? "Zaloguj się" : "Utwórz konto"}
           </Button>
-          <p className="text-[10px] text-muted-foreground text-center">
-            1 pkt = 5 zł · Pierwsze konto zostaje administratorem.
-          </p>
         </form>
       </DialogContent>
     </Dialog>

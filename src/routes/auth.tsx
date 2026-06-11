@@ -78,9 +78,6 @@ function AuthPage() {
         <Button type="submit" disabled={loading} className="mt-6 w-full h-12 btn-gold">
           {loading ? "Proszę czekać..." : mode === "login" ? "Zaloguj się" : "Utwórz konto"}
         </Button>
-        <p className="mt-4 text-xs text-muted-foreground text-center">
-          Pierwsze utworzone konto automatycznie zostaje administratorem.
-        </p>
       </form>
     </div>
   );
